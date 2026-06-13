@@ -1,0 +1,191 @@
+/**
+ * Import real products from `import/products.csv` into `src/data/products.ts`,
+ * replacing the demo catalogue. Run with:  npm run import:products
+ *
+ * Workflow:
+ *   1. Drop product photos into `public/products/`
+ *   2. Fill in `import/products.csv` (one row per product)
+ *   3. Run this script — it validates, builds the catalogue, and writes the file
+ */
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { categories } from "../src/data/categories";
+
+const ROOT = process.cwd();
+const CSV_PATH = join(ROOT, "import", "products.csv");
+const IMAGES_DIR = join(ROOT, "public", "products");
+const OUT_PATH = join(ROOT, "src", "data", "products.ts");
+
+const VALID_CATEGORIES = new Set(categories.map((c) => c.slug));
+const VALID_BADGES = new Set(["new", "bestseller", "limited", "sale"]);
+
+function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Minimal RFC-4180-ish CSV parser (supports quoted fields + commas/newlines). */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  const src = text.replace(/\r\n?/g, "\n");
+
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (src[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else inQuotes = false;
+      } else field += ch;
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += ch;
+    }
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((r) => r.some((c) => c.trim() !== ""));
+}
+
+function splitList(value: string): string[] {
+  return value
+    .split("|")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function main() {
+  if (!existsSync(CSV_PATH)) {
+    console.error(`✗ Missing ${CSV_PATH}`);
+    process.exit(1);
+  }
+
+  const rows = parseCsv(readFileSync(CSV_PATH, "utf8"));
+  const header = rows.shift();
+  if (!header) {
+    console.error("✗ CSV is empty.");
+    process.exit(1);
+  }
+  const col = (name: string) => header.findIndex((h) => h.trim().toLowerCase() === name);
+  const idx = {
+    name: col("name"),
+    category: col("category"),
+    price: col("price"),
+    comparePrice: col("compareprice"),
+    stock: col("stock"),
+    description: col("description"),
+    images: col("images"),
+    sizes: col("sizes"),
+    colors: col("colors"),
+    featured: col("featured"),
+    badges: col("badges"),
+  };
+
+  const warnings: string[] = [];
+  const products = rows.map((r, n) => {
+    const get = (i: number) => (i >= 0 ? (r[i] ?? "").trim() : "");
+    const name = get(idx.name);
+    const category = get(idx.category);
+    const slug = slugify(name);
+
+    if (!VALID_CATEGORIES.has(category as never)) {
+      warnings.push(`Row ${n + 2} "${name}": unknown category "${category}".`);
+    }
+
+    const images = splitList(get(idx.images)).map((file) => {
+      if (!existsSync(join(IMAGES_DIR, file))) {
+        warnings.push(`Row ${n + 2} "${name}": image not found → public/products/${file}`);
+      }
+      return { url: `/products/${file}`, alt: name };
+    });
+
+    const sizeVariants = splitList(get(idx.sizes)).map((value) => ({
+      id: `${slug}-size-${slugify(value)}`,
+      name: "Size",
+      value,
+      inStock: true,
+    }));
+
+    const colorVariants = splitList(get(idx.colors)).map((entry) => {
+      const [label, hex] = entry.split(":").map((s) => s.trim());
+      return {
+        id: `${slug}-color-${slugify(label ?? entry)}`,
+        name: "Color",
+        value: label ?? entry,
+        ...(hex ? { hex } : {}),
+        inStock: true,
+      };
+    });
+
+    const variants = [...sizeVariants, ...colorVariants];
+    const badges = splitList(get(idx.badges)).filter((b) => VALID_BADGES.has(b));
+    const comparePriceRaw = get(idx.comparePrice);
+    const featured = ["yes", "true", "1"].includes(get(idx.featured).toLowerCase());
+    const catCode = category.replace(/[^a-z]/g, "").slice(0, 3).toUpperCase() || "GEN";
+
+    return {
+      id: `p-${String(n + 1).padStart(3, "0")}`,
+      name,
+      slug,
+      sku: `FMBD-${catCode}-${String(n + 1).padStart(3, "0")}`,
+      category,
+      tags: [category],
+      images,
+      price: Number(get(idx.price)) || 0,
+      ...(comparePriceRaw ? { comparePrice: Number(comparePriceRaw) } : {}),
+      stock: Number(get(idx.stock)) || 0,
+      rating: 0,
+      reviewCount: 0,
+      description: get(idx.description),
+      ...(variants.length ? { variants } : {}),
+      ...(badges.length ? { badges } : {}),
+      isFeatured: featured,
+    };
+  });
+
+  const banner = `import type { Product } from "@/lib/types";
+
+// ⚠️ AUTO-GENERATED by scripts/import-products.ts
+// Edit import/products.csv and run \`npm run import:products\` to regenerate.
+`;
+  const body = `export const products: Product[] = ${JSON.stringify(products, null, 2)};
+
+export const featuredProducts = products.filter((p) => p.isFeatured);
+
+export function getProductBySlug(slug: string) {
+  return products.find((p) => p.slug === slug);
+}
+
+export function getProductsByCategory(category: string) {
+  return products.filter((p) => p.category === category);
+}
+`;
+
+  writeFileSync(OUT_PATH, banner + "\n" + body, "utf8");
+
+  console.log(`✅ Imported ${products.length} products → src/data/products.ts`);
+  if (warnings.length) {
+    console.log(`\n⚠️  ${warnings.length} warning(s):`);
+    warnings.forEach((w) => console.log(`   - ${w}`));
+  }
+}
+
+main();

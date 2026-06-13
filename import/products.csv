@@ -1,0 +1,4 @@
+name,category,price,comparePrice,stock,description,images,sizes,colors,featured,badges
+"Central Perk Classic Tee",t-shirts,850,1200,40,"Soft premium cotton tee with the iconic Central Perk logo.","central-perk-tee-1.jpg|central-perk-tee-2.jpg",S|M|L|XL,"Black:#111111|White:#ffffff",yes,bestseller
+"How You Doin' Hoodie",hoodies,1850,2400,18,"Cosy fleece hoodie with embroidered Joey quote.","how-you-doin-hoodie-1.jpg",M|L|XL,"Maroon:#7b2d3a|Black:#111111",yes,new
+"Central Perk Coffee Mug",mugs,550,,60,"11oz ceramic mug — your coffee deserves a Central Perk cup.","central-perk-mug-1.jpg",,,no,

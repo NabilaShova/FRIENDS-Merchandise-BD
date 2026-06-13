@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * FRIENDS Merchandise BD — Theme tokens
+ * Colors are stored as raw HSL channels so Tailwind's `hsl(var(--x))` and
+ * opacity modifiers (e.g. `bg-brand/20`) work everywhere.
+ *
+ * Brand:  FRIENDS Purple   ~ #5B2C9D
+ * Accent: FRIENDS Yellow   ~ #F4C430
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* #FFFFFF */
+    --foreground: 240 10% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+
+    --muted: 240 5% 96%; /* #FAFAFA-ish */
+    --muted-foreground: 240 4% 46%;
+
+    --brand: 265 56% 40%; /* FRIENDS Purple */
+    --brand-50: 266 70% 97%;
+    --brand-100: 266 65% 93%;
+    --brand-500: 265 56% 48%;
+    --brand-600: 265 58% 42%;
+    --brand-700: 266 60% 34%;
+    --brand-foreground: 0 0% 100%;
+
+    --accent: 45 90% 57%; /* FRIENDS Yellow */
+    --accent-foreground: 240 10% 8%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 265 56% 48%;
+
+    --radius: 1rem;
+
+    --nav-height: 4.5rem;
+  }
+
+  .dark {
+    --background: 240 10% 6%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 9% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --muted: 240 6% 14%;
+    --muted-foreground: 240 5% 65%;
+
+    --brand: 265 70% 66%;
+    --brand-50: 265 30% 16%;
+    --brand-100: 265 35% 20%;
+    --brand-500: 265 70% 66%;
+    --brand-600: 265 72% 60%;
+    --brand-700: 265 74% 54%;
+    --brand-foreground: 240 10% 6%;
+
+    --accent: 45 90% 60%;
+    --accent-foreground: 240 10% 8%;
+
+    --border: 240 6% 18%;
+    --input: 240 6% 18%;
+    --ring: 265 70% 66%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-brand/20 text-brand-700;
+  }
+
+  /* Brand-tinted scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-brand/40;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand/60;
+  }
+}
+
+@layer components {
+  /* Glassmorphism surface used by navbar, cards, testimonials */
+  .glass {
+    @apply border border-white/30 bg-white/60 backdrop-blur-xl backdrop-saturate-150;
+  }
+  .dark .glass {
+    @apply border-white/10 bg-white/5;
+  }
+
+  /* Section vertical rhythm */
+  .section {
+    @apply py-20 md:py-28;
+  }
+
+  .heading-display {
+    @apply font-display font-bold tracking-tight;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-muted;
+  }
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/40 to-transparent content-[''];
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  /* Mask edges of marquees for a premium fade */
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

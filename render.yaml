@@ -1,0 +1,52 @@
+# Render Blueprint — https://render.com/schema/render.yaml.json
+# One Next.js service serves BOTH the customer storefront (/) and the
+# admin dashboard (/admin). Deploy: push to Git, then "New + → Blueprint" on Render.
+#
+# DATA / SHARED SOURCE OF TRUTH — pick ONE:
+#   A) PostgreSQL (recommended for a live store). Set DATABASE_URL to an
+#      external DB (Neon / Supabase) OR uncomment the `databases` block below
+#      for Render Postgres. Then run `npx prisma db push && npm run db:seed`.
+#   B) Persistent disk: uncomment the `disk` block + DATA_DIR (paid instance).
+#   C) Nothing: runs on the in-memory store (resets on each deploy/restart).
+
+services:
+  - type: web
+    name: friends-merchandise-bd
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      # Admin dashboard password (login at /admin/login). Set in the dashboard.
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Public site URL — set to your onrender.com URL (or custom domain).
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      # ── Option A: PostgreSQL ───────────────────────────────────────────
+      # External DB (Neon/Supabase): paste the connection string in the
+      # dashboard (sync:false keeps the secret out of git).
+      - key: DATABASE_URL
+        sync: false
+      # …or, for Render Postgres, replace the line above with:
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: friends-db
+      #     property: connectionString
+      # ── Option B: durable file store (uncomment with the disk below) ────
+      # - key: DATA_DIR
+      #   value: /var/data
+
+    # ── Option B: persistent disk (requires a paid instance type) ─────────
+    # disk:
+    #   name: friends-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+
+# ── Option A: Render-managed Postgres (free for 30 days, then paid) ───────
+# databases:
+#   - name: friends-db
+#     plan: free
+#     region: oregon

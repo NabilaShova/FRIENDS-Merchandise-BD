@@ -1,0 +1,103 @@
+// FRIENDS Merchandise BD — Prisma schema (PostgreSQL)
+// Models map 1:1 onto the app domain types in `src/lib/*`, so the shared
+// repository (`src/server/repo.ts`) can read/write with trivial mappers.
+//
+// Setup:
+//   1. Set DATABASE_URL in .env (any Postgres: Neon, Supabase, Render…).
+//   2. npx prisma db push      # create tables
+//   3. npm run db:seed         # load the starter catalogue
+//   4. npx prisma generate     # (runs automatically on install)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String    @default("")
+  image       String    @default("")
+  products    Product[]
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  slug         String           @unique
+  name         String
+  sku          String           @default("")
+  description  String           @default("")
+  price        Int
+  comparePrice Int?
+  stock        Int              @default(0)
+  rating       Float            @default(0)
+  reviewCount  Int              @default(0)
+  isFeatured   Boolean          @default(false)
+  tags         String[]
+  attributes   Json?
+  categorySlug String
+  category     Category         @relation(fields: [categorySlug], references: [slug], onDelete: Cascade, onUpdate: Cascade)
+  images       ProductImage[]
+  variants     ProductVariant[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([categorySlug])
+  @@index([isFeatured])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String  @default("")
+  position  Int     @default(0)
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String // "Size" | "Color"
+  value     String // "M" | "Lavender"
+  hex       String?
+  inStock   Boolean @default(true)
+}
+
+model Coupon {
+  code      String   @id
+  kind      String // "percent" | "fixed"
+  value     Int
+  minSpend  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  number        String   @id
+  status        String   @default("pending") // pending_payment | pending | confirmed
+  paymentMethod String // cod | bkash
+  subtotal      Int
+  shipping      Int      @default(0)
+  total         Int
+  couponCode    String?
+  giftWrap      Boolean  @default(false)
+  customer      Json
+  items         Json
+  bkash         Json?
+  createdAt     DateTime @default(now())
+
+  @@index([status])
+}
+
+// Single-row store settings (payment methods + bKash instructions).
+model Setting {
+  id   String @id @default("singleton")
+  data Json
+}
