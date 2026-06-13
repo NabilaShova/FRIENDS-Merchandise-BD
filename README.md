@@ -261,6 +261,42 @@ Move to Render's $7 instance (or add a paid Neon tier) only when traffic grows.
 3. Add `DATABASE_URL` (+ `ADMIN_PASSWORD`, `NEXT_PUBLIC_SITE_URL`) to the host's env vars.
 4. Deploy. `/api/health` should report `"storage":"postgres"`.
 
+### ⭐ Deploy to Neon + Vercel (free, step by step)
+
+**1 — Create the Neon database**
+
+1. Sign up at [neon.tech](https://neon.tech) → **New Project** (pick a region near your buyers).
+2. On the project dashboard, copy the **connection string** (looks like
+   `postgresql://USER:PASS@ep-xxx.REGION.aws.neon.tech/neondb?sslmode=require`).
+
+**2 — Seed it from your machine**
+
+```bash
+# in the project root
+echo 'DATABASE_URL="<paste your Neon string>"' > .env
+npm run db:push     # creates the tables in Neon
+npm run db:seed     # loads the 8 starter products, 9 categories, coupons
+```
+
+**3 — Push the repo to GitHub** (if not already): create a repo and `git push`.
+
+**4 — Import on Vercel**
+
+1. [vercel.com](https://vercel.com) → **Add New… → Project** → import your GitHub repo.
+   Framework **Next.js** is auto-detected; leave build settings default.
+2. Add **Environment Variables** (Production + Preview):
+   | Key | Value |
+   | --- | ----- |
+   | `DATABASE_URL` | your Neon connection string |
+   | `ADMIN_PASSWORD` | a strong admin password |
+   | `NEXT_PUBLIC_SITE_URL` | `https://<your-project>.vercel.app` |
+3. **Deploy.** When it finishes, open `/api/health` — it should say
+   `"storage":"postgres"`. Admin login is at `/admin/login`.
+
+> The `build` script runs `prisma generate` before `next build`, so Vercel always
+> ships a fresh Prisma client. At higher traffic, switch `DATABASE_URL` to Neon's
+> **pooled** string (the host with `-pooler`) to conserve connections.
+
 ---
 
 > _Fan-made tribute store. FRIENDS and related marks are property of Warner Bros. Replace placeholder imagery and licensing before commercial use._
